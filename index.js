@@ -1,169 +1,123 @@
-const express = require("express");
+const express = require('express');
+const { MongoClient } = require('mongodb');
+const ObjectId = require('mongodb').ObjectId;
+
+const cors = require('cors');
+require('dotenv').config();
+
 const app = express();
-const cors = require("cors");
-const { MongoClient } = require("mongodb");
-require("dotenv").config();
 const port = process.env.PORT || 5000;
 
-app.use(cors())
-app.use(express.json())
+// middleware
+app.use(cors());
+app.use(express.json());
 
 
 const uri = `mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASS}@cluster0.nsqce.mongodb.net/myFirstDatabase?retryWrites=true&w=majority`;
 const client = new MongoClient(uri, { useNewUrlParser: true, useUnifiedTopology: true });
 
-console.log("our uri", uri);
-
 
 
 async function run() {
     try {
-        await client.connect();
-        console.log("connected to database")
+        await client.connect()
+        console.log("connect to database");
+        const database = client.db('myfoodmood');
+        const foodCollection = database.collection('user');
+        const ordersCollection = client
+            .db("myfoodmood")
+            .collection("service");
 
-        const database = client.db("myfoodmood");
-        const userCollection = database.collection("user")
-
-        //POST API
-        app.post('/userService', async (req, res) => {
-            const userData = req.body;
-            const result = await userCollection.insertOne(userData);
+        //post api for services insert
+        app.post('/services', async (req, res) => {
+            const service = req.body;
+            console.log('hit the post api', service);
+            const result = await foodCollection.insertOne(service);
+            console.log(result);
             res.json(result)
         });
 
 
-        //GET API full
-        app.get('/userService', async (req, res) => {
-            const cursor = servicesCollection.find({});
-            const service = await cursor.toArray();
-            res.json(service)
-        })
+        // GET API for show data
+        app.get('/services', async (req, res) => {
+            const cursor = foodCollection.find({}).limit(6);
+            const services = await cursor.toArray();
+            res.send(services);
+        });
 
-        //GET Single API
-        app.get('/userService/:id', async (req, res) => {
+
+        // GET Single Service id
+        app.get('/services/:id', async (req, res) => {
             const id = req.params.id;
+            console.log('getting specific service', id);
             const query = { _id: ObjectId(id) };
-            const result = await servicesCollection.findOne(query);
-            res.json(result)
+            const service = await foodCollection.findOne(query);
+            res.json(service);
         })
 
 
-        // Update API
-        app.put('/userService/:id', async (req, res) => {
+        // Add Orders API
+        app.post('/placeorder', async (req, res) => {
+            const order = req.body;
+            const result = await ordersCollection.insertOne(order);
+            res.json(result);
+        })
+
+        // show my orders
+        app.get('/orders', async (req, res) => {
+            const cursor = ordersCollection.find({});
+            const product = await cursor.toArray();
+            res.send(product);
+        });
+
+
+        // update status
+        app.put('/update/:id', async (req, res) => {
             const id = req.params.id;
-            const updateService = req.body;
+            const updatedOrder = req.body;
             const filter = { _id: ObjectId(id) };
             const options = { upsert: true };
             const updateDoc = {
                 $set: {
-                    Name: updateService.Name,
-                    price: updateService.price,
-                    description: updateService.description,
-                    img: updateService.img
-                }
-            }
-            const result = await servicesCollection.updateOne(filter, updateDoc, options);
+                    status: updatedOrder.status,
+                },
+            };
+            const result = await ordersCollection.updateOne(filter, updateDoc, options)
+            console.log('updating', id)
             res.json(result)
         })
 
-        // DELETE API
-        app.delete('/userService/:id', async (req, res) => {
+        // cancel an order
+        app.delete('/myorders/:id', async (req, res) => {
             const id = req.params.id;
             const query = { _id: ObjectId(id) };
-            const service = await servicesCollection.deleteOne(query);
-            res.json(service)
+            const result = await ordersCollection.deleteOne(query);
+            console.log('deleting user with id ', result);
+            res.json(result);
         })
+
+        // dynamic api for update products
+        app.get('/orders/:id', async (req, res) => {
+            const id = req.params.id;
+            const query = { _id: ObjectId(id) };
+            const order = await ordersCollection.findOne(query);
+            console.log('load user with id: ', id);
+            res.send(order);
+        })
+
 
     }
     finally {
 
     }
-
 }
-
 run().catch(console.dir);
 
-// async function run() {
-//     try {
-//         await client.connect();
-//         const database = client.db("foodMood");
-//         const userCollection = database.collection("user");
-
-
-//-----------------------------//
-
-
-// //GET API full
-// app.get('/userService', async (req, res) => {
-//     const cursor = servicesCollection.find({});
-//     const service = await cursor.toArray();
-//     res.json(service)
-// })
-
-// //GET Single API
-// app.get('/userService/:id', async (req, res) => {
-//     const id = req.params.id;
-//     const query = { _id: ObjectId(id) };
-//     const result = await servicesCollection.findOne(query);
-//     res.json(result)
-// })
-
-
-//POST API
-// app.post('/userService', async (req, res) => {
-//     const userData = req.body;
-//     const result = await servicesCollection.insertOne(userData);
-//     res.json(result)
-// });
-
-//Update API
-// app.put('/userService/:id', async (req, res) => {
-//     const id = req.params.id;
-//     const updateService = req.body;
-//     const filter = { _id: ObjectId(id) };
-//     const options = { upsert: true };
-//     const updateDoc = {
-//         $set: {
-//             Name: updateService.Name,
-//             price: updateService.price,
-//             description: updateService.description,
-//             img: updateService.img
-//         }
-//     }
-//     const result = await servicesCollection.updateOne(filter, updateDoc, options);
-//     res.json(result)
-// })
-
-//DELETE API
-// app.delete('/userService/:id', async (req, res) => {
-//     const id = req.params.id;
-//     const query = { _id: ObjectId(id) };
-//     const service = await servicesCollection.deleteOne(query);
-//     res.json(service)
-// })
-
-
-
-//-----------------------------//
-
-
-
-
-
-
-
-
-
-//     } finally {
-//         // await client.close();
-//     }
-// }
-// run().catch(console.dir);
 
 app.get('/', (req, res) => {
-    res.send("successfully connected server")
+    res.send('running t-shirt delivery  server')
 })
-
 app.listen(port, () => {
-    console.log("server start by port ", port)
-})
+    console.log('listening on port', port);
+});
+
