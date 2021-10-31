@@ -57,7 +57,7 @@ async function run() {
 
 
         // Add Orders API
-        app.post('/placeorder', async (req, res) => {
+        app.post('/orders', async (req, res) => {
             const order = req.body;
             const result = await ordersCollection.insertOne(order);
             res.json(result);
