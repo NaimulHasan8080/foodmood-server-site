@@ -31,7 +31,7 @@ async function run() {
         //post api for services insert
         app.post('/services', async (req, res) => {
             const service = req.body;
-            console.log('hit the post api', service);
+            // console.log('hit the post api', service);
             const result = await foodCollection.insertOne(service);
             console.log(result);
             res.json(result)
